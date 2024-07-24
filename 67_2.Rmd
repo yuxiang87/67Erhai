@@ -1,0 +1,232 @@
+---
+title: "67_2"
+author: "Yuxiang"
+date: "2024-07-18"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readxl)
+library(lubridate)
+library(dplyr)
+
+```
+
+#Data import
+
+```{r}
+path <- "Data/4_0.xls"
+Data <- read_excel(path, skip = 1)
+Data$Time <- ymd_hms(Data$Time)
+Data <- Data %>%
+    mutate(across(-c(Time, WaterQ),  as.numeric))
+
+
+
+
+
+
+
+```
+
+#ColName
+```{r}
+# 设置文件路径
+files <- list.files(path = "Data", pattern = "*.xls", full.names = TRUE)
+
+# 获取所有表格中的列名称
+all_column_names <- unique(unlist(lapply(files, function(file) {
+  data <- read_excel(file, skip = 1, n_max = 1)  # 只读取第一行以获取列名
+  colnames(data)
+})))
+
+# 初始化结果表格
+result <- data.frame(File = basename(files))
+
+# 函数：读取并处理Excel文件
+read_and_process <- function(file) {
+  data <- read_excel(file, skip = 1)
+  
+  # 转换Time列为时间格式，WaterQ列保留为字符格式，其余列转换为数值格式
+  data <- data %>%
+    mutate(
+      Time = ymd_hms(Time),
+      across(-c(Time, WaterQ), as.numeric, .names = "num_{.col}")
+    )
+  
+  return(data)
+}
+
+# 填充结果表格
+for (col_name in all_column_names) {
+  result[[col_name]] <- sapply(files, function(file) {
+    data <- read_and_process(file)
+    col_name %in% colnames(data)
+  }, USE.NAMES = FALSE)
+}
+
+# 打印结果表格
+print(result)
+
+
+result[-1] <- lapply(result[-1], function(x) ifelse(x, 1, 0))
+write.csv(result, file = "Output_Excel/ColNameAll.csv", row.names = FALSE)
+
+
+```
+
+
+#Time range
+```{r}
+# 函数：读取并处理Excel文件，并提取Time列的起始和终止时间
+read_and_process <- function(file) {
+  data <- read_excel(file, skip = 1)
+  
+  # 转换Time列为时间格式，WaterQ列保留为字符格式，其余列转换为数值格式
+  data <- data %>%
+    mutate(
+      Time = ymd_hms(Time),
+      across(-c(Time, WaterQ), as.numeric, .names = "num_{.col}")
+    )
+  
+  # 获取Time列的起始和终止时间
+  start_time <- min(data$Time, na.rm = TRUE)
+  end_time <- max(data$Time, na.rm = TRUE)
+  
+  return(data.frame(File = basename(file), StartTime = start_time, EndTime = end_time))
+}
+
+# 初始化结果表格
+time_stats <- do.call(rbind, lapply(files, read_and_process))
+
+# 打印结果表格
+print(time_stats)
+
+write.csv(time_stats, file = "Output_Excel/time_stats.csv", row.names = FALSE)
+
+
+```
+```{r}
+files <- list.files(path = "Data", pattern = "*.xls", full.names = TRUE)
+
+# 获取所有表格中的列名称
+all_column_names <- unique(unlist(lapply(files, function(file) {
+  data <- read_excel(file, skip = 1, n_max = 1)  # 只读取第一行以获取列名
+  colnames(data)
+})))
+
+# 初始化结果表格
+result <- data.frame(File = basename(files))
+
+# 函数：读取并处理Excel文件
+read_and_process <- function(file) {
+  data <- read_excel(file, skip = 1)
+  
+  # 转换Time列为时间格式，WaterQ列保留为字符格式，其余列转换为数值格式
+  data <- data %>%
+    mutate(
+      Time = ymd_hms(Time),
+      across(-c(Time, WaterQ), as.numeric, .names = "num_{.col}")
+    )
+  
+  return(data)
+}
+
+# 函数：判断列的有效性
+is_valid_column <- function(data, col_name) {
+  if (!col_name %in% colnames(data)) {
+    return(FALSE)
+  }
+  col_data <- data[[col_name]]
+  valid_count <- sum(!is.na(col_data) & col_data != 0)
+  total_count <- nrow(data)
+  if (valid_count == 0) {
+    return(0.5)
+  } else if (valid_count / total_count <= 0.5) {
+    return(0.5)
+  } else {
+    return(TRUE)
+  }
+}
+
+# 填充结果表格
+for (col_name in all_column_names) {
+  result[[col_name]] <- sapply(files, function(file) {
+    data <- read_and_process(file)
+    is_valid_column(data, col_name)
+  }, USE.NAMES = FALSE)
+}
+
+# 打印结果表格
+print(result)
+```
+
+
+#ColName-vali
+```{r}
+files <- list.files(path = "Data", pattern = "*.xls", full.names = TRUE)
+
+# 获取所有表格中的列名称
+all_column_names <- unique(unlist(lapply(files, function(file) {
+  data <- read_excel(file, skip = 1, n_max = 1)  # 只读取第一行以获取列名
+  colnames(data)
+})))
+
+# 初始化结果表格
+result <- data.frame(File = basename(files))
+
+# 函数：读取并处理Excel文件
+read_and_process <- function(file) {
+  data <- read_excel(file, skip = 1)
+  
+  # 转换Time列为时间格式，WaterQ列保留为字符格式，其余列转换为数值格式
+  data <- data %>%
+    mutate(
+      Time = ymd_hms(Time),
+      across(-c(Time, WaterQ), as.numeric, .names = "num_{.col}")
+    )
+  
+  return(data)
+}
+
+# 函数：判断列的有效性
+is_valid_column <- function(data, col_name) {
+  if (!col_name %in% colnames(data)) {
+    return(0)
+  }
+  col_data <- data[[col_name]]
+  valid_count <- sum(!is.na(col_data) & col_data != 0)
+  total_count <- nrow(data)
+  if (valid_count == 0) {
+    return(0.5)
+  } else if (valid_count / total_count <= 0.5) {
+    return(0.5)
+  } else {
+    return(1)
+  }
+}
+
+# 填充结果表格
+for (col_name in all_column_names) {
+  result[[col_name]] <- sapply(files, function(file) {
+    data <- read_and_process(file)
+    is_valid_column(data, col_name)
+  }, USE.NAMES = FALSE)
+}
+
+# 打印结果表格
+print(result)
+write.csv(result, file = "Output_Excel/ColNameAll_vali.csv", row.names = FALSE)
+
+
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+

@@ -1,0 +1,86 @@
+---
+title: "67_1"
+author: "Yuxiang"
+date: "2024-07-17"
+output: html_document
+---
+
+#Prepartion
+
+```{r setup, include=FALSE}
+install.packages("lubridate")
+install.packages("dplyr")
+install.packages("readxl")
+```
+
+```{r message=TRUE, warning=TRUE}
+library(readxl)
+library(lubridate)
+library(dplyr)
+```
+
+#import Data 
+##test N4 Data \<- Data %\>% mutate(across(-c(Time, WaterQ), \~ as.numeric(ifelse(. == "", NA, .))))--空白值NA ##4_0
+
+```{r improt N$}
+
+#导入数据
+path <- "Data/4_0.xls"
+Data <- read_excel(path, skip = 1)
+Data$Time <- ymd_hms(Data$Time)
+Data <- Data %>%
+    mutate(across(-c(Time, WaterQ),  as.numeric))
+
+```
+
+#NA test
+```{r NAtest1}
+#NAtest1
+# 检查每列中的NA数量
+na_counts <- colSums(is.na(Data))
+
+# 检查每列中0的数量
+zero_counts <- colSums(Data == 0, na.rm = TRUE)
+
+#NA+0
+na_zero_counts <- na_counts+zero_counts
+
+table <- rbind(
+  Column = names(Data), Zero_Counts = zero_counts, NA_Counts = na_counts,
+  NA_and_Zero_Sum = na_zero_counts)
+
+table
+
+```
+
+```{r NA test2}
+
+# 找出全为NA或0的列
+columns_all_na_or_zero <- which(na_counts + zero_counts == nrow(Data))
+
+# 将全为NA或0的列中的0替换为NA
+for (col in columns_all_na_or_zero) {
+  Data[[col]][Data[[col]] == 0] <- NA
+}
+
+# 重新计算每列中的NA数量
+na_counts <- colSums(is.na(Data))
+
+# 输出包含NA的列及其NA数量
+na_columns <- na_counts[na_counts > 0]
+
+if (length(na_columns) > 0) {
+  cat("表格中包含NA值的列及其数量如下:\n")
+  print(na_columns)
+} else {
+  cat("数据框中没有NA值\n")
+}
+
+```
+
+#category
+```{r}
+column_names <- colnames(Data)
+
+```
+

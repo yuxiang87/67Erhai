@@ -1,0 +1,405 @@
+---
+title: "River system"
+author: "Yuxiang"
+date: "2024-07-19"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: null
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readxl)
+library(dplyr)
+library(readr)
+library(readxl)
+library(lubridate)
+library(dplyr)
+library(ggplot2)
+
+```
+
+```{r}
+time_state <- read_csv("Output_Excel/time_stats.csv")
+```
+
+#river system 5 group1: 22-20-15-10-3 ##time range 22,20,15,10,3 highvalue InstanF
+
+```{r}
+time_state <- read_csv("Output_Excel/time_stats.csv")
+River5 <- c("22_0.xls", "20_0.xls", "15_0.xls", "10_0.xls", "3_0.xls")
+
+River5Time <- time_state %>%
+  filter(File %in% River5) %>%
+  mutate(File = factor(File, levels = River5)) %>% 
+  arrange(File)
+```
+
+```{r data_all_FALSE, eval=FALSE, include=FALSE}
+files <- c("Data/22_0.xls", "Data/20_0.xls", "Data/15_0.xls", "Data/10_0.xls", "Data/3_0.xls")
+
+extract_instanf_data <- function(file) {
+  data <- read_excel(file, skip = 1)
+  if("InstanF" %in% colnames(data)) {
+    instanf_data <- data$InstanF
+  } else {
+    instanf_data <- NA
+    warning(paste("File", file, "does not contain InstanF column"))
+  }
+  return(instanf_data)
+}
+
+instanf_data_list <- lapply(files, extract_instanf_data)
+
+results <- data.frame(
+  File = basename(files),
+  Min = numeric(length(files)),
+  First_Quartile = numeric(length(files)),
+  Median = numeric(length(files)),
+  Third_Quartile = numeric(length(files)),
+  Max = numeric(length(files)),
+  stringsAsFactors = FALSE
+)
+
+for (i in seq_along(instanf_data_list)) {
+  data <- instanf_data_list[[i]]
+  if (!all(is.na(data))) {
+    data <- na.omit(data)  
+    results[i, "Min"] <- min(data)
+    results[i, "First_Quartile"] <- quantile(data, 0.25)
+    results[i, "Median"] <- median(data)
+    results[i, "Third_Quartile"] <- quantile(data, 0.75)
+    results[i, "Max"] <- max(data)
+  } else {
+    results[i, c("Min", "First_Quartile", "Median", "Third_Quartile", "Max")] <- NA
+  }
+}
+
+
+print(results)
+
+
+
+
+```
+
+###each 22
+
+```{r each22}
+path <- "Data/22_0.xls"
+Data <- read_excel(path, skip = 1)
+Data$Time <- ymd_hms(Data$Time)
+Data <- Data %>%
+    mutate(across(-c(Time, WaterQ),  as.numeric))
+summary(Data$InstanF)
+
+Highflow_22 <- Data %>% filter(InstanF > 600)
+write_csv(Highflow_22, "data/Highflow_22.csv")
+```
+
+###each 20
+
+```{r each20}
+path <- "Data/20_0.xls"
+Data <- read_excel(path, skip = 1)
+Data$Time <- ymd_hms(Data$Time)
+Data <- Data %>%
+    mutate(across(-c(Time, WaterQ),  as.numeric))
+summary(Data$InstanF)
+
+Highflow_20 <- Data %>% filter(InstanF > 300)
+write_csv(Highflow_20, "data/Highflow_20.csv")
+```
+
+###each 15
+
+```{r each15}
+path <- "Data/15_0.xls"
+Data <- read_excel(path, skip = 1)
+Data$Time <- ymd_hms(Data$Time)
+Data <- Data %>%
+    mutate(across(-c(Time, WaterQ),  as.numeric))
+summary(Data$InstanF)
+
+Highflow_15 <- Data %>% filter(InstanF > 150)
+write_csv(Highflow_15, "data/Highflow_15.csv")
+```
+
+###each 10
+
+```{r each10}
+path <- "Data/10_0.xls"
+Data <- read_excel(path, skip = 1)
+Data$Time <- ymd_hms(Data$Time)
+Data <- Data %>%
+    mutate(across(-c(Time, WaterQ),  as.numeric))
+summary(Data$InstanF)
+
+Highflow_10 <- Data %>% filter(InstanF > 150)
+write_csv(Highflow_10, "data/Highflow_10.csv")
+```
+
+###each 3
+
+```{r each3}
+path <- "Data/3_0.xls"
+Data <- read_excel(path, skip = 1)
+Data$Time <- ymd_hms(Data$Time)
+Data <- Data %>%
+    mutate(across(-c(Time, WaterQ),  as.numeric))
+summary(Data$InstanF)
+
+Highflow_3 <- Data %>% filter(InstanF > 1)
+write_csv(Highflow_3, "data/Highflow_3.csv")
+```
+
+
+###FALSE common date all
+
+```{r common date_FALSE, eval=FALSE, include=FALSE}
+
+files <- c("Data/Highflow_3.csv", "Data/Highflow_10.csv", "Data/Highflow_15.csv", "Data/Highflow_20.csv", "Data/Highflow_22.csv")
+
+read_and_process <- function(file) {
+  data <- read_csv(file)
+  data <- data %>%
+    mutate(Time = as_date(ymd_hms(Time))) 
+  return(data)
+}
+
+
+data_list <- lapply(files, read_and_process)
+
+
+common_dates <- Reduce(intersect, lapply(data_list, function(data) data$Time))
+
+
+common_dates_df <- data.frame(Common_Dates = common_dates)
+```
+
+###FALSE common date Not include3
+
+```{r common date2_FALSE, eval=FALSE, include=FALSE}
+
+files <- c( "Data/Highflow_10.csv", "Data/Highflow_15.csv", "Data/Highflow_20.csv", "Data/Highflow_22.csv")
+
+read_and_process <- function(file) {
+  data <- read_csv(file)
+  data <- data %>%
+    mutate(Time = as_date(ymd_hms(Time)))  
+  return(data)
+}
+
+
+data_list <- lapply(files, read_and_process)
+
+
+common_dates <- Reduce(intersect, lapply(data_list, function(data) data$Time))
+
+
+common_dates_df <- data.frame(Common_Dates = common_dates)
+```
+
+##selected date 
+### 2023-09-12
+
+```{r 2023-09-12}
+
+files <- c("Data/22_0.xls", "Data/20_0.xls", "Data/15_0.xls", "Data/10_0.xls", "Data/3_0.xls")
+
+
+date_to_extract <- as_date("2023-09-12")
+
+read_and_extract <- function(file, date) {
+  data <- read_excel(file, skip = 1)
+  data <- data %>%
+    mutate(Time = ymd_hms(Time)) %>%
+    filter(as_date(Time) == date) %>%
+    mutate(Name = basename(file))  
+  return(data)
+}
+
+
+extracted_data_list <- lapply(files, read_and_extract, date = date_to_extract)
+
+
+merged_data <- bind_rows(extracted_data_list)
+merged_data <- merged_data %>% select(Name, everything())
+
+print(merged_data)
+```
+
+####FIgure
+
+```{r}
+f1 <- ggplot(data = merged_data, aes(x = Time, y = InstanF, color = Name, group = Name)) +
+  geom_line() +
+  labs(title = "InstanF over Time", x = "Time", y = "InstanF") +
+  theme_minimal()
+
+f2 <- ggplot(data = merged_data, aes(x = Time, y = TN, color = Name, group = Name)) +
+  geom_line() +
+  labs(title = "TN over Time", x = "Time", y = "TN") +
+  theme_minimal()
+
+f3 <-  ggplot(data = merged_data, aes(x = Time, y = TP, color = Name, group = Name)) +
+  geom_line() +
+  labs(title = "TN over Time", x = "Time", y = "TP") +
+  theme_minimal()
+f1
+f2
+f3
+
+```
+
+### 2023-06-08
+
+```{r}
+
+files <- c("Data/22_0.xls", "Data/20_0.xls", "Data/15_0.xls", "Data/10_0.xls", "Data/3_0.xls")
+
+
+date_to_extract <- as_date("2023-06-08")
+
+
+read_and_extract <- function(file, date) {
+  data <- read_excel(file, skip = 1, col_types = "text") %>% 
+    mutate(across(everything(), as.character)) %>%
+    mutate(Time = ymd_hms(Time)) %>%
+    filter(as_date(Time) == date) %>%
+    mutate(Name = basename(file))  
+  return(data)
+}
+
+
+extracted_data_list <- lapply(files, read_and_extract, date = date_to_extract)
+
+
+merged_data <- bind_rows(extracted_data_list)
+
+
+merged_data <- merged_data %>%
+  mutate(across(where(is.character), ~type.convert(.x, as.is = TRUE)))
+
+
+merged_data <- merged_data %>% select(Name, everything())
+
+
+print(merged_data)
+```
+
+### 2023-08-23
+```{r 2023-08-23}
+
+files <- c("Data/22_0.xls", "Data/20_0.xls", "Data/15_0.xls", "Data/10_0.xls", "Data/3_0.xls")
+
+
+date_to_extract <- as_date("2023-08-23")
+
+
+read_and_extract <- function(file, date) {
+  data <- read_excel(file, skip = 1, col_types = "text") %>% 
+    mutate(across(everything(), as.character)) %>%
+    mutate(Time = ymd_hms(Time)) %>%
+    filter(as_date(Time) == date) %>%
+    mutate(Name = basename(file))  
+  return(data)
+}
+
+extracted_data_list <- lapply(files, read_and_extract, date = date_to_extract)
+
+
+merged_data <- bind_rows(extracted_data_list)
+
+
+merged_data <- merged_data %>%
+  mutate(across(where(is.character), ~type.convert(.x, as.is = TRUE)))
+
+
+merged_data <- merged_data %>% select(Name, everything())
+
+
+print(merged_data)
+
+
+```
+
+####Figure
+```{r}
+
+f1 <- ggplot(data = merged_data, aes(x = Time, y = InstanF, color = Name, group = Name)) +
+  geom_line() +
+  labs(title = "InstanF over Time", x = "Time", y = "InstanF") +
+  theme_minimal()
+
+f2 <- ggplot(data = merged_data, aes(x = Time, y = TN, color = Name, group = Name)) +
+  geom_line() +
+  labs(title = "TN over Time", x = "Time", y = "TN") +
+  theme_minimal()
+
+f3 <- ggplot(data = merged_data, aes(x = Time, y = TP, color = Name, group = Name)) +
+  geom_line() +
+  labs(title = "TP over Time", x = "Time", y = "TP") +
+  theme_minimal()
+
+f1
+f2
+f3
+```
+
+##river4
+```{r 2023-09-12 River4}
+
+files <- c("Data/22_0.xls", "Data/19_0.xls", "Data/14_0_2.xls","Data/14_0_1.xls","Data/14_0.xls", "Data/8_0.xls", "Data/4_0.xls")
+
+
+read_and_extract <- function(file, date) {
+  data <- read_excel(file, skip = 1, col_types = "text") %>% 
+    mutate(across(everything(), as.character)) %>%
+    mutate(Time = ymd_hms(Time)) %>%
+    filter(as_date(Time) == date) %>%
+    mutate(Name = basename(file)) 
+  return(data)
+}
+
+
+extracted_data_list <- lapply(files, read_and_extract, date = date_to_extract)
+
+
+merged_data <- bind_rows(extracted_data_list)
+
+
+merged_data <- merged_data %>%
+  mutate(across(where(is.character), ~type.convert(.x, as.is = TRUE)))
+
+
+merged_data <- merged_data %>% select(Name, everything())
+
+
+print(merged_data)
+```
+
+```{r}
+
+f1 <- ggplot(data = merged_data, aes(x = Time, y = InstanF, color = Name, group = Name)) +
+  geom_line() +
+  labs(title = "InstanF over Time", x = "Time", y = "InstanF") +
+  theme_minimal()
+
+f2 <- ggplot(data = merged_data, aes(x = Time, y = TN, color = Name, group = Name)) +
+  geom_line() +
+  labs(title = "TN over Time", x = "Time", y = "TN") +
+  theme_minimal()
+
+f3 <- ggplot(data = merged_data, aes(x = Time, y = TP, color = Name, group = Name)) +
+  geom_line() +
+  labs(title = "TP over Time", x = "Time", y = "TP") +
+  theme_minimal()
+
+f1
+f2
+f3
+```
+
+

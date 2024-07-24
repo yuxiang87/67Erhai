@@ -1,0 +1,217 @@
+---
+title: "67_data_info"
+author: "Yuxiang"
+date: "2024-07-19"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+install.packages("ggplot2")
+install.packages("reshape2")
+
+
+
+```
+```{r}
+library(ggplot2)
+library(reshape2)
+library(readxl)
+library(lubridate)
+library(dplyr)
+library(readr)
+```
+
+#data colname1
+```{r}
+ColNameAll <- read_csv("Output_Excel/ColNameAll.csv")
+View(ColNameAll)
+# 将数据框从宽格式转换为长格式
+melted_data <- melt(ColNameAll, id.vars = "File")
+
+# 创建热图
+ggplot(melted_data, aes(x = variable, y = File, fill = factor(value))) +
+  geom_tile(color = "black") +
+  scale_fill_manual(values = c("0" = "white", "1" = "green")) +
+  labs(x = "Column Names", y = "File Names", fill = "Presence") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+
+
+```
+#横1
+```{r}
+ColNameAll <- read_csv("Output_Excel/ColNameAll.csv")
+# 自定义文件顺序和分组
+custom_order <- c(
+  "22_0.xls", # 第一组
+  "18_0.xls", "12_0.xls", "6_0.xls", "5_0.xls", # 第二组
+  "13_0.xls", "7_0.xls", # 第三组
+  "19_0.xls", "14_0_2.xls", "14_0_1.xls", "14_0.xls", "8_0.xls", "4_0.xls", # 第四组
+  "20_0.xls", "15_0.xls", "10_0.xls", "3_0.xls", # 第五组
+  "21_0.xls", "16_0.xls", "11_0.xls", # 第六组
+  "17_0.xls" # 第七组
+)
+
+# 将文件列转换为因子并按自定义顺序排序
+ColNameAll$File <- factor(ColNameAll$File, levels = custom_order)
+
+# 将数据框从宽格式转换为长格式
+melted_data <- melt(ColNameAll, id.vars = "File")
+
+# 创建热图
+p <- ggplot(melted_data, aes(x = variable, y = File, fill = factor(value))) +
+  geom_tile(color = "black") +
+  scale_fill_manual(values = c("0" = "white", "1" = "green")) +
+  labs(x = "Column Names", y = "File Names", fill = "Presence") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+# 添加分隔线
+group_lines <- c(1.5, 5.5, 7.5, 13.5, 17.5, 20.5, 21.5) # 定义分隔线位置
+
+for (line in group_lines) {
+  p <- p + geom_hline(yintercept = line, color = "black", linetype = "dashed")
+}
+
+# 打印结果
+print(p)
+
+# 保存图表
+ggsave("Output/Heatmap_with_lines.png", plot = p)
+```
+#横2
+```{r}
+ColNameAll <- read_csv("Output_Excel/ColNameAll.csv")
+# 自定义文件顺序和分组
+custom_order <- c(
+  "22_0.xls", # 第一组
+  "18_0.xls", "12_0.xls", "6_0.xls", "5_0.xls", # 第二组
+  "13_0.xls", "7_0.xls", # 第三组
+  "19_0.xls", "14_0_2.xls", "14_0_1.xls", "14_0.xls", "8_0.xls", "4_0.xls", # 第四组
+  "20_0.xls", "15_0.xls", "10_0.xls", "3_0.xls", # 第五组
+  "21_0.xls", "16_0.xls", "11_0.xls", # 第六组
+  "17_0.xls" # 第七组
+)
+
+# 自定义列名分组和颜色
+column_groups <- list(
+  group1 = c("Time", "WaterQ"),
+  group2 = c("WaterTemp", "pH", "DO", "C", "Turb"),
+  group3 = c("AmmoniaN", "TP", "TN", "COD", "NitrateN"),
+  group4 = c("InstanF", "CumF", "IntervalF", "FlowR"),
+  group5 = c("WindD", "WindS", "SolarR", "SoilTemp", "SoilM", "MeteoH", "MeteoTemp","Rainfall")
+)
+
+column_colors <- c(
+  group1 = "grey",
+  group2 = "darkblue",
+  group3 = "red",
+  group4 = "lightblue",
+  group5 = "black"
+)
+
+# 将文件列转换为因子并按自定义顺序排序
+ColNameAll$File <- factor(ColNameAll$File, levels = custom_order)
+
+# 将数据框从宽格式转换为长格式
+melted_data <- melt(ColNameAll, id.vars = "File")
+
+# 为每个列名分配颜色
+melted_data$color <- sapply(melted_data$variable, function(x) {
+  group <- which(sapply(column_groups, function(group) x %in% group))
+  names(column_groups)[group]
+})
+
+# 创建热图
+p <- ggplot(melted_data, aes(x = variable, y = File, fill = factor(value))) +
+  geom_tile(color = "black") +
+  scale_fill_manual(values = c("0" = "white", "1" = "green")) +
+  labs(x = "Column Names", y = "File Names", fill = "Presence") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+  facet_grid(~color, scales = "free_x", space = "free_x")
+
+# 添加分隔线
+group_lines <- c(1.5, 5.5, 7.5, 13.5, 17.5, 20.5, 21.5) # 定义分隔线位置
+
+for (line in group_lines) {
+  p <- p + geom_hline(yintercept = line, color = "black", linetype = "dashed")
+}
+
+# 打印结果
+print(p)
+
+ggsave("Output_F/Heatmap1_colnames.png", plot = p, width = 10, height = 8)
+
+```
+
+#横valid
+```{r}
+
+ColNameAll_vali <- read_csv("Output_Excel/ColNameAll_vali.csv")
+
+# 自定义文件顺序和分组
+custom_order <- c(
+  "22_0.xls", # 第一组
+  "18_0.xls", "12_0.xls", "6_0.xls", "5_0.xls", # 第二组
+  "13_0.xls", "7_0.xls", # 第三组
+  "19_0.xls", "14_0_2.xls", "14_0_1.xls", "14_0.xls", "8_0.xls", "4_0.xls", # 第四组
+  "20_0.xls", "15_0.xls", "10_0.xls", "3_0.xls", # 第五组
+  "21_0.xls", "16_0.xls", "11_0.xls", # 第六组
+  "17_0.xls" # 第七组
+)
+
+# 自定义列名分组和颜色
+column_groups <- list(
+  group1 = c("Time", "WaterQ"),
+  group2 = c("WaterTemp", "pH", "DO", "C", "Turb"),
+  group3 = c("AmmoniaN", "TP", "TN", "COD", "NitrateN"),
+  group4 = c("InstanF", "CumF", "IntervalF", "FlowR"),
+  group5 = c("WindD", "WindS", "SolarR", "SoilTemp", "SoilM", "MeteoH", "MeteoTemp","Rainfall")
+)
+
+column_colors <- c(
+  group1 = "grey",
+  group2 = "darkblue",
+  group3 = "red",
+  group4 = "lightblue",
+  group5 = "black"
+)
+
+# 将文件列转换为因子并按自定义顺序排序
+ColNameAll_vali$File <- factor(ColNameAll_vali$File, levels = custom_order)
+
+# 将数据框从宽格式转换为长格式
+melted_data <- melt(ColNameAll_vali, id.vars = "File")
+
+# 为每个列名分配颜色
+melted_data$color <- sapply(melted_data$variable, function(x) {
+  group <- which(sapply(column_groups, function(group) x %in% group))
+  names(column_groups)[group]
+})
+
+# 创建热图
+p <- ggplot(melted_data, aes(x = variable, y = File, fill = factor(value))) +
+  geom_tile(color = "black") +
+  scale_fill_manual(values = c("0" = "white", "1" = "green")) +
+  labs(x = "Column Names", y = "File Names", fill = "Presence") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+  facet_grid(~color, scales = "free_x", space = "free_x")
+
+# 添加分隔线
+group_lines <- c(1.5, 5.5, 7.5, 13.5, 17.5, 20.5, 21.5) # 定义分隔线位置
+
+for (line in group_lines) {
+  p <- p + geom_hline(yintercept = line, color = "black", linetype = "dashed")
+}
+
+# 打印结果
+print(p)
+
+ggsave("Output_F/Heatmap1_colnames_valid.png", plot = p, width = 10, height = 8)
+```
+

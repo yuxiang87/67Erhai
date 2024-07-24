@@ -1,0 +1,481 @@
+---
+title: "cumulative test"
+author: "Yuxiang"
+date: "2024-07-22"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+#install.packages("purrr")
+library(readxl)
+library(dplyr)
+library(readr)
+library(readxl)
+library(lubridate)
+library(dplyr)
+library(ggplot2)
+library(purrr)
+library(stringr)
+
+```
+
+#4_0.xls
+
+```{r 4_0 data input}
+
+path <- "Data/4_0.xls"
+Data <- read_excel(path, skip = 1)
+Data$Time <- ymd_hms(Data$Time)
+Data <- Data %>%
+    mutate(across(-c(Time, WaterQ),  as.numeric))
+```
+
+```{r 4_0gourp}
+
+Data$Day <- as.Date(Data$Time)
+daily_avg <- Data %>%
+  group_by(Day) %>%
+  summarise(
+    WaterTemp = mean(WaterTemp, na.rm = TRUE),
+    pH = mean(pH, na.rm = TRUE),
+    DO = mean(DO, na.rm = TRUE),
+    C = mean(C, na.rm = TRUE),
+    Turb = mean(Turb, na.rm = TRUE),
+    AmmoniaN = mean(AmmoniaN, na.rm = TRUE),
+    TP = mean(TP, na.rm = TRUE),
+    TN = mean(TN, na.rm = TRUE),
+    NitrateN = mean(NitrateN, na.rm = TRUE),
+    COD = mean(COD, na.rm = TRUE),
+    SolarR = mean(SolarR, na.rm = TRUE),
+    SoilTemp = mean(SoilTemp, na.rm = TRUE),
+    InstanF = mean(InstanF, na.rm = TRUE) )
+#cumF
+cumf_daily <- Data %>%
+  arrange(Time) %>%
+  group_by(Day) %>%
+  summarise(
+    CumF_start = first(CumF),
+    CumF_end = ifelse(any(hour(Time) == 0), last(CumF[hour(Time) == 0]), last(CumF))
+  ) %>%
+  mutate(CumF_daily = lead(CumF_end) - CumF_start) %>%
+  select(Day, CumF_daily) %>%
+  filter(!is.na(CumF_daily))
+
+daily_all_4_0 <- left_join(daily_avg,cumf_daily, by = "Day")
+
+```
+
+#all data
+##import
+```{r}
+files <- list.files(path = "Data/Raw", pattern = "*.xls", full.names = TRUE)
+
+read_and_process <- function(file) {
+  data <- read_excel(file, skip = 1)
+  data$Time <- ymd_hms(data$Time)
+  data <- data %>%
+    mutate(across(-c(Time, WaterQ), as.numeric))
+  data$Name <- str_remove(basename(file),"\\.xls$")
+  return(data)
+}
+
+data_list <- lapply(files, read_and_process)
+all_column_names <- unique(unlist(lapply(data_list, colnames)))
+
+fill_missing_columns <- function(df, all_columns) {
+  missing_cols <- setdiff(all_columns, colnames(df))
+  df[missing_cols] <- NA
+  return(df)
+}
+
+data_list <- lapply(data_list, fill_missing_columns, all_columns = all_column_names)
+
+merged_data <- bind_rows(data_list)
+
+```
+## Daily
+```{r}
+merged_data$Day <- as.Date(merged_data$Time)
+All_Day <- merged_data %>%
+  group_by(Name,Day) %>%
+  summarise(
+    WaterTemp = mean(WaterTemp, na.rm = TRUE),
+    pH = mean(pH, na.rm = TRUE),
+    DO = mean(DO, na.rm = TRUE),
+    C = mean(C, na.rm = TRUE),
+    Turb = mean(Turb, na.rm = TRUE),
+    AmmoniaN = mean(AmmoniaN, na.rm = TRUE),
+    TP = mean(TP, na.rm = TRUE),
+    TN = mean(TN, na.rm = TRUE),
+    NitrateN = mean(NitrateN, na.rm = TRUE),
+    COD = mean(COD, na.rm = TRUE),
+    SolarR = mean(SolarR, na.rm = TRUE),
+    SoilTemp = mean(SoilTemp, na.rm = TRUE),
+    InstanF = mean(InstanF, na.rm = TRUE) )
+
+cumf_D_all <- merged_data %>%
+  arrange(Name, Time) %>%
+  group_by(Name, Day) %>%
+  summarise(
+    CumF_start = first(na.omit(CumF)),
+    CumF_end = ifelse(any(hour(Time) == 0), last(na.omit(CumF[hour(Time) == 0])), last(na.omit(CumF)))
+  ) %>%
+  mutate(CumF_daily = lead(CumF_end) - CumF_start) %>%
+  select(Name, Day, CumF_daily) %>%
+  filter(!is.na(CumF_daily))
+
+
+daily_all <- left_join(All_Day, cumf_D_all, by = c("Name", "Day"))
+
+```
+
+###Figure
+####source
+
+```{r}
+selected_data2 <- daily_all %>%
+  filter(Name %in% c("22", "21", "20", "19", "18","17"))
+summary(selected_data2$CumF_daily)
+
+ggplot(selected_data2, aes(x = Day, y = CumF_daily, color = Name, group = Name)) +
+  geom_line() +
+  geom_point(size = 0.5) +
+  labs(title = "CumF_daily over Time for Selected Stations",
+       x = "Date",
+       y = "CumF_daily",
+       color = "Station") +
+  theme_minimal() +
+  theme(
+    panel.background = element_rect(fill = "white", color = NA),
+    plot.background = element_rect(fill = "white", color = NA),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  ) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_x_date(limits = as.Date(c("2023-10-01", "2024-08-01")),
+               date_labels = "%Y-%m-%d",
+               date_breaks = "1 month")
+ggsave("Output_F/Source_D_CumF.png")
+
+
+```
+##柱状
+```{r}
+reference_data <- selected_data2 %>%
+  filter(Name == "22") %>%
+  select(Day, CumF_daily) %>%
+  rename(CumF_daily_22 = CumF_daily)
+
+combined_data <- selected_data2 %>%
+  filter(Name != "22") %>%
+  left_join(reference_data, by = "Day") %>%
+  mutate(proportion = CumF_daily / CumF_daily_22)
+
+ggplot(combined_data, aes(x = Day, y = proportion, fill = Name)) +
+  geom_col(position = "stack") +
+  labs(title = "Cumulative Proportion of CumF_daily for Selected Stations",
+       x = "Date",
+       y = "Proportion of CumF_daily",
+       fill = "Station") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_x_date(limits = as.Date(c("2023-10-01", "2024-08-01")),
+               date_labels = "%Y-%m-%d",
+               date_breaks = "1 month")
+
+```
+
+
+####river1
+```{r }
+selected_data <- daily_all %>%
+  filter(Name %in% c("22", "20", "15", "10", "3"))
+
+#flow
+summary(selected_data$CumF_daily)
+#Min.    1st Qu.     Median       Mean    3rd Qu.       Max.       NA's 
+#-245555424          0        616    -331136       3587   13623792        325 
+
+
+selected_data <- daily_all %>%
+  filter(Name %in% c("22", "20", "15", "10", "3") & CumF_daily > 0)
+ggplot(selected_data, aes(x = Day, y = CumF_daily, color = Name, group = Name)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "CumF_daily over Time for Selected Stations",
+       x = "Date",
+       y = "CumF_daily",
+       color = "Station") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_x_date(limits = as.Date(c("2023-07-01", "2024-08-01")),
+               date_labels = "%Y-%m-%d",
+               date_breaks = "1 month")
+
+
+
+
+
+
+
+ggsave("Output_F/R1_CumF_daily.png")
+
+#TN
+ggplot(selected_data, aes(x = Day, y = TN, color = Name, group = Name)) +
+  geom_line() +
+  geom_point(size = 1.5) +
+  labs(title = "TN over Time for Selected Stations",
+       x = "Date",
+       y = "TN",
+       color = "Station") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_x_date(limits = as.Date(c("2023-07-01", "2024-08-01")),
+               date_labels = "%Y-%m-%d",
+               date_breaks = "1 month")
+ggsave("Output_F/R1_TN_daily.png")
+
+
+
+
+```
+
+## weekly
+```{r}
+daily_all$Week <- floor_date(daily_all$Day, "week")
+week_all <- daily_all %>%
+  group_by(Name, Week) %>%
+  summarise(
+    WaterTemp = mean(WaterTemp, na.rm = TRUE),
+    pH = mean(pH, na.rm = TRUE),
+    DO = mean(DO, na.rm = TRUE),
+    C = mean(C, na.rm = TRUE),
+    Turb = mean(Turb, na.rm = TRUE),
+    AmmoniaN = mean(AmmoniaN, na.rm = TRUE),
+    TP = mean(TP, na.rm = TRUE),
+    TN = mean(TN, na.rm = TRUE),
+    NitrateN = mean(NitrateN, na.rm = TRUE),
+    COD = mean(COD, na.rm = TRUE),
+    SolarR = mean(SolarR, na.rm = TRUE),
+    SoilTemp = mean(SoilTemp, na.rm = TRUE),
+    InstanF = mean(InstanF, na.rm = TRUE),
+    CumF_week = sum(CumF_daily, na.rm = TRUE)
+  )
+
+
+```
+
+###Figure
+####source
+
+```{r}
+selected_data3 <- week_all %>%
+  filter(Name %in% c("22", "21", "20", "19", "18","17"))
+summary(selected_data3$CumF_week)
+
+ggplot(selected_data3, aes(x = Week, y = CumF_week, color = Name, group = Name)) +
+  geom_line() +
+  geom_point(size = 0.5) +
+  labs(title = "CumF_week over Time for Selected Stations",
+       x = "Date",
+       y = "CumF_week",
+       color = "Station") +
+  theme_minimal() +
+  theme(
+    panel.background = element_rect(fill = "white", color = NA),
+    plot.background = element_rect(fill = "white", color = NA),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  ) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_x_date(limits = as.Date(c("2023-10-01", "2024-08-01")),
+               date_labels = "%Y-%m-%d",
+               date_breaks = "1 month")
+ggsave("Output_F/Source_W_CumF.png")
+
+
+```
+
+
+##monthly
+
+```{r}
+daily_all$Month <- floor_date(daily_all$Day, "month")
+month_all <- daily_all %>%
+  group_by(Name, Month) %>%
+  summarise(
+    WaterTemp = mean(WaterTemp, na.rm = TRUE),
+    pH = mean(pH, na.rm = TRUE),
+    DO = mean(DO, na.rm = TRUE),
+    C = mean(C, na.rm = TRUE),
+    Turb = mean(Turb, na.rm = TRUE),
+    AmmoniaN = mean(AmmoniaN, na.rm = TRUE),
+    TP = mean(TP, na.rm = TRUE),
+    TN = mean(TN, na.rm = TRUE),
+    NitrateN = mean(NitrateN, na.rm = TRUE),
+    COD = mean(COD, na.rm = TRUE),
+    SolarR = mean(SolarR, na.rm = TRUE),
+    SoilTemp = mean(SoilTemp, na.rm = TRUE),
+    InstanF = mean(InstanF, na.rm = TRUE),
+    CumF_month = sum(CumF_daily, na.rm = TRUE)
+  )
+
+
+
+
+```
+
+###Figure
+####source
+
+```{r}
+selected_data4 <- month_all %>%
+  filter(Name %in% c("22", "21", "20", "19", "18","17"))
+summary(selected_data4$CumF_month)
+
+ggplot(selected_data4, aes(x = Month, y = CumF_month, color = Name, group = Name)) +
+  geom_line() +
+  geom_point(size = 0.5) +
+  labs(title = "CumF_week over Time for Selected Stations",
+       x = "Month",
+       y = "CumF_month",
+       color = "Station") +
+  theme_minimal() +
+  theme(
+    panel.background = element_rect(fill = "white", color = NA),
+    plot.background = element_rect(fill = "white", color = NA),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  ) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_x_date(limits = as.Date(c("2023-10-01", "2024-08-01")),
+               date_labels = "%Y-%m-%d",
+               date_breaks = "1 month")
+ggsave("Output_F/Source_M_CumF.png")
+
+
+```
+
+##import2
+
+```{r}
+
+MData <- read_csv("Data/MData.csv", skip = 1) 
+MData$Time <- ymd_hm(MData$Time) 
+MData$COD <- gsub("\\(.*?\\)", "", MData$COD)%>%  as.numeric(MData$COD)
+MData$AmmoniaN <- gsub("\\(.*?\\)", "", MData$AmmoniaN)%>%  as.numeric(MData$AmmoniaN)
+MData$TP <- gsub("\\(.*?\\)", "", MData$TP)%>%  as.numeric(MData$TP)
+MData$TN <- gsub("\\(.*?\\)", "", MData$TN)%>%  as.numeric(MData$TN)
+MData$NitrateN <- gsub("\\(.*?\\)", "", MData$NitrateN)%>%  as.numeric(MData$NitrateN)
+
+
+MData$Day <- as.Date(MData$Time)
+All_Day_MData <- MData %>%
+  group_by(Name,Day) %>%
+  summarise(
+    WaterTemp = mean(WaterTemp, na.rm = TRUE),
+    pH = mean(pH, na.rm = TRUE),
+    DO = mean(DO, na.rm = TRUE),
+    C = mean(C, na.rm = TRUE),
+    Turb = mean(Turb, na.rm = TRUE),
+    AmmoniaN = mean(AmmoniaN, na.rm = TRUE),
+    TP = mean(TP, na.rm = TRUE),
+    TN = mean(TN, na.rm = TRUE),
+    NitrateN = mean(NitrateN, na.rm = TRUE),
+    COD = mean(COD, na.rm = TRUE),)
+
+All_Day_MData <- All_Day_MData %>%
+  mutate(Name = str_replace_all(Name, c("14.1" = "14_1", "14.2" = "14_2")))
+
+
+
+columns_to_merge <- c("TN", "TP", "NitrateN", "COD", "AmmoniaN")
+merged_dataF <- daily_all %>%
+  left_join(All_Day_MData %>% select(Name, Day, all_of(columns_to_merge)), by = c("Name", "Day")) %>%
+  rowwise() %>%
+  mutate(
+    TN = ifelse(is.na(TN.x), TN.y, mean(c(TN.x, TN.y), na.rm = TRUE)),
+    TP = ifelse(is.na(TP.x), TP.y, mean(c(TP.x, TP.y), na.rm = TRUE)),
+    NitrateN = ifelse(is.na(NitrateN.x), NitrateN.y, mean(c(NitrateN.x, NitrateN.y), na.rm = TRUE)),
+    COD = ifelse(is.na(COD.x), COD.y, mean(c(COD.x, COD.y), na.rm = TRUE)),
+    AmmoniaN = ifelse(is.na(AmmoniaN.x), AmmoniaN.y, mean(c(AmmoniaN.x, AmmoniaN.y), na.rm = TRUE))
+  ) %>%
+  select(-ends_with(".x"), -ends_with(".y"))
+
+
+
+daily_all
+
+
+```
+
+
+###Nutrient
+```{r}
+selected_data <- merged_dataF %>%
+  filter(Name %in% c("22", "20", "15", "10", "3") )
+
+#TN
+ggplot(selected_data, aes(x = Day, y = TN, color = Name, group = Name)) +
+  geom_line() +
+  geom_point(size = 0.5) +
+  labs(title = "TN over Time for Selected Stations",
+       x = "Date",
+       y = "TN",
+       color = "Station") +
+  theme_minimal() +
+  theme(
+    panel.background = element_rect(fill = "white", color = NA),
+    plot.background = element_rect(fill = "white", color = NA),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  ) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_x_date(limits = as.Date(c("2023-07-01", "2024-08-01")),
+               date_labels = "%Y-%m-%d",
+               date_breaks = "1 month")
+ggsave("Output_F/R1_TN_daily.png")
+
+#TP
+ggplot(selected_data, aes(x = Day, y = TP, color = Name, group = Name)) +
+  geom_line() +
+  geom_point(size = 0.5) +
+  labs(title = "TP over Time for Selected Stations",
+       x = "Date",
+       y = "TP",
+       color = "Station") +
+  theme_minimal() +
+  theme(
+    panel.background = element_rect(fill = "white", color = NA),
+    plot.background = element_rect(fill = "white", color = NA),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  ) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_x_date(limits = as.Date(c("2023-07-01", "2024-08-01")),
+               date_labels = "%Y-%m-%d",
+               date_breaks = "1 month")
+ggsave("Output_F/R1_TP_daily.png")
+
+ggplot(selected_data, aes(x = Day, y = COD, color = Name, group = Name)) +
+  geom_line() +
+  geom_point(size = 0.5) +
+  labs(title = "COD over Time for Selected Stations",
+       x = "Date",
+       y = "COD",
+       color = "Station") +
+  theme_minimal() +
+  theme(
+    panel.background = element_rect(fill = "white", color = NA),
+    plot.background = element_rect(fill = "white", color = NA),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  ) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_x_date(limits = as.Date(c("2023-07-01", "2024-08-01")),
+               date_labels = "%Y-%m-%d",
+               date_breaks = "1 month")
+ggsave("Output_F/R1_COD_daily.png")
+```
+
+
+
+
+
+
+
