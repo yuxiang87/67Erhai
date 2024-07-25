@@ -1,0 +1,178 @@
+---
+title: "Precipitation_flow"
+author: "Yuxiang"
+date: "2024-07-25"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+#install.packages("gridExtra")
+library(readxl)
+library(dplyr)
+library(readr)
+library(readxl)
+library(lubridate)
+library(dplyr)
+library(ggplot2)
+library(purrr)
+library(stringr)
+library(gridExtra)
+```
+
+#import Data
+```{r}
+
+Precipitation <- read_excel("Data/Precipitation.xlsx")
+precipitation_numeric <- str_remove(Precipitation, "mm") %>%
+                         as.numeric()
+
+colnames(Precipitation) <- c("Date","Precip")
+
+Data <- read.csv("Data/Daily_AllSite_Monitoring.csv")
+Data$Day <- ymd(Data$Day)
+colnames(Data)[which(names(Data) == "Day")] <- "Date"
+
+colnames(Data)[which(names(Data) == "CumF_daily")] <- "CumF"
+
+Data <- Data %>%
+  left_join(Precipitation, by = c("Date" = "Date"))
+
+write.csv(Data, file = "Data/Daily_AllSite_Monitoring_With_Precip.csv", row.names = FALSE)
+
+```
+#figure
+##Precip+cumF
+```{r}
+#22
+
+CumF_22 <- Data %>%
+  filter(Name == "22") %>%
+  select(Date, CumF)
+
+
+p1 <- ggplot() +
+  # 绘制Precip数据的柱状图
+  geom_col(data = Data, aes(x = Date, y = Precip), fill = "blue", alpha = 0.5) +
+  # 绘制Name为22的CumF数据的折线图
+  geom_line(data = CumF_22, aes(x = Date, y = CumF), color = "red", size = 1) +
+  # 添加双纵坐标轴
+  scale_y_continuous(name = "Precipitation", 
+                     sec.axis = sec_axis(~ ., name = "CumF")) +
+  # 添加标签和主题
+  labs(title = "Precipitation and CumF for Station 22",
+       x = "Date") +
+  theme_minimal() +
+  theme(axis.title.y.right = element_text(color = "red"))
+print(p1)
+
+
+p2 <- ggplot() +
+  geom_col(data = Data, aes(x = Date, y = Precip), fill = "blue", alpha = 0.5) +
+  geom_line(data = CumF_22, aes(x = Date, y = CumF), color = "red", size = 1) +
+  scale_y_continuous(name = "Precipitation", limits = c(0,150),
+                     sec.axis = sec_axis(~ .*(120000/150), name = "CumF")) +
+  labs(title = "Precipitation and CumF for Station 22",
+       x = "Date") +
+  theme_minimal() +
+  theme(axis.title.y.right = element_text(color = "red"))
+print(p2)
+
+
+p3 <- ggplot() +
+  # 绘制 Precip 数据的柱状图
+  geom_col(data = Data, aes(x = Date, y = Precip), fill = "blue", alpha = 0.5) +
+  # 绘制 Name 为 22 的 CumF 数据的折线图
+  geom_line(data = CumF_22, aes(x = Date, y = CumF), color = "red", size = 1) +
+  # 添加双纵坐标轴
+  scale_y_continuous(name = "Precipitation", 
+                     limits = c(0, 150),
+                     sec.axis = sec_axis(~ . * (120000 / 150), name = "CumF")) +
+  # 添加标签和主题
+  labs(title = "Precipitation and CumF for Station 22",
+       x = "Date") +
+  theme_minimal() +
+  theme(axis.title.y.right = element_text(color = "red"))
+print(p3)
+
+p1 <- ggplot(Data, aes(x = Date, y = Precip)) +
+  geom_col(fill = "blue", alpha = 0.5) +
+  scale_y_continuous(name = "Precipitation", limits = c(0, 150)) +
+  labs(title = "Precipitation", x = NULL) +
+  theme_minimal() +
+  theme(axis.text.x = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(color = "blue"),
+        plot.margin = margin(t = 10, r = 5, b = 5, l = 5))
+
+# 创建 CumF 图
+p2 <- ggplot(CumF_22, aes(x = Date, y = CumF)) +
+  geom_line(color = "red", size = 1) +
+  scale_y_continuous(name = "CumF", limits = c(0, 120000)) +
+  labs(title = "CumF for Station 22", x = NULL) +
+  theme_minimal() +
+  theme(axis.title.y = element_text(color = "red"),
+        plot.margin = margin(t = 5, r = 5, b = 5, l = 5))
+
+# 合并图形
+f4 <- grid.arrange(p1, p2, ncol = 1, heights = c(1, 2))
+
+ggplot() +
+  # 绘制 Precipitation 数据的柱状图
+  geom_col(data = Data, aes(x = Date, y = Precip), fill = "blue", alpha = 0.5) +
+  # 绘制 Name 为 22 的 CumF 数据的折线图
+  geom_line(data = CumF_22, aes(x = Date, y = CumF), color = "red", size = 1) +
+  # 设置左边 Y 轴的范围和标签
+  scale_y_continuous(name = "Precipitation", limits = c(0, 150),
+                     sec.axis = sec_axis(~ . , name = "CumF")) +
+  # 设置右边 Y 轴的范围和标签
+  scale_y_continuous(name = "CumF", limits = c(0, 120000), 
+                     sec.axis = sec_axis(~ . / (120000 / 150), name = "Precipitation")) +
+  # 添加标签和主题
+  labs(title = "Precipitation and CumF for Station 22",
+       x = "Date") +
+  theme_minimal() +
+  theme(axis.title.y.left = element_text(color = "blue"),
+        axis.title.y.right = element_text(color = "red"),
+        axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+
+
+
+
+
+```
+##figure test
+```{r}
+
+
+S22 <- Data %>%
+  filter(Name == "22") %>% filter(Date)
+
+
+p1 <- ggplot() +
+  geom_col(data = Data, aes(x = Date, y = Precip), fill = "blue", alpha = 0.5) +
+  geom_line(data = CumF_22, aes(x = Date, y = CumF), color = "red", size = 1) +
+  scale_y_continuous(name = "Precipitation", 
+                     sec.axis = sec_axis(~ ., name = "CumF")) +
+  labs(title = "Precipitation and CumF for Station 22",
+       x = "Date") +
+  theme_minimal() +
+  theme(axis.title.y.right = element_text(color = "red"))
+print(p1)
+
+
+p2 <- ggplot() +
+  geom_col(data = Data, aes(x = Date, y = Precip), fill = "blue", alpha = 0.5) +
+  geom_line(data = CumF_22, aes(x = Date, y = CumF), color = "red", size = 1) +
+  scale_y_continuous(name = "Precipitation", limits = c(0,150),
+                     sec.axis = sec_axis(~ .*(120000/150), name = "CumF")) +
+  labs(title = "Precipitation and CumF for Station 22",
+       x = "Date") +
+  theme_minimal() +
+  theme(axis.title.y.right = element_text(color = "red"))
+print(p2)
+
+```
+

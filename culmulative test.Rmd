@@ -355,7 +355,7 @@ ggsave("Output_F/Source_M_CumF.png")
 ```
 
 ##import2
-
+Add monitoring data
 ```{r}
 
 MData <- read_csv("Data/MData.csv", skip = 1) 
@@ -402,7 +402,7 @@ merged_dataF <- daily_all %>%
 
 
 
-daily_all
+write.csv(merged_dataF, file = "Data/Daily_AllSite_Monitoring.csv", row.names = FALSE)
 
 
 ```
