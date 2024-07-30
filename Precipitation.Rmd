@@ -49,7 +49,7 @@ write.csv(Data, file = "Data/Daily_AllSite_Monitoring_With_Precip.csv", row.name
 
 ```
 #figure
-##Precip+cumF
+##22-Precip+cumF
 ```{r}
 #22
 
@@ -225,3 +225,360 @@ htmltools::tagList(hydrograph)
 saveWidget(hydrograph, "hydrograph.html", selfcontained = TRUE)
 ```
 
+##21
+```{r}
+
+S21 <- Data %>%
+  filter(Name == "21") %>%  filter(Date > as.Date("2023-07-01"))
+
+max_precip <- max(S21$Precip, na.rm = TRUE)
+max_cumf <- max(S21$CumF, na.rm = TRUE)
+scaling_factor <- max_cumf / max_precip
+
+
+
+max_precip <- max(S21$Precip, na.rm = TRUE)
+max_cumf <- max(S21$CumF, na.rm = TRUE)
+
+# Create scaling factor for aligning the two y-axes
+scaling_factor <- max_cumf / max_precip
+
+# Plot hydrograph and precipitation
+hydrograph <- highchart() %>%
+  # Define multiple y-axes
+  hc_yAxis_multiples(
+    list(title = list(text = "Precipitation (mm)"), reversed = TRUE, opposite = TRUE, max = max_precip), 
+    list(title = list(text = "CumF (m³/day)"), max = max_cumf)
+  ) %>%
+  # Add precipitation data as a column chart
+  hc_add_series(
+    name = "Precipitation", 
+    data = list_parse2(S21 %>% select(Date, Precip)), 
+    type = "column", 
+    yAxis = 0
+  ) %>%
+  # Add CumF data as a spline chart
+  hc_add_series(
+    name = "Stream Discharge", 
+    data = list_parse2(S21 %>% select(Date, CumF)), 
+    type = "spline", 
+    yAxis = 1
+  ) %>%
+  # Set x-axis categories and title
+  hc_xAxis(
+    categories = as.character(S21$Date), 
+    title = list(text = "Date"),
+    tickInterval = 1,
+    labels = list(rotation = -45) # Rotate labels if necessary
+  ) %>%
+  # Set title
+  hc_title(text = "Hydrograph and Precipitation21") %>%
+  # Set chart options
+  hc_chart(type = "line") %>%
+  hc_tooltip(shared = TRUE) %>%
+  # Adjust x-axis tick interval for better readability
+  hc_xAxis(tickInterval = "1 month")
+htmltools::tagList(hydrograph)
+saveWidget(hydrograph, "hydrograph21.html", selfcontained = TRUE)
+```
+
+#precip+cumflow
+```{r}
+name_range <- 1:22
+# Loop through each name and generate plots
+for (name in name_range) {
+  # Filter data for the current Name
+  current_data <- Data %>%
+    filter(Name == as.character(name)) %>%
+    filter(Date > as.Date("2023-07-01"))
+
+  # Calculate maximum values and scaling factor
+  max_precip <- max(current_data$Precip, na.rm = TRUE)
+  max_cumf <- max(current_data$CumF, na.rm = TRUE)
+  scaling_factor <- max_cumf / max_precip
+
+  # Create hydrograph plot
+  hydrograph <- highchart() %>%
+    # Define multiple y-axes
+    hc_yAxis_multiples(
+      list(title = list(text = "Precipitation (mm)"), reversed = TRUE, opposite = TRUE, max = max_precip), 
+      list(title = list(text = "CumF (m³/day)"), max = max_cumf)
+    ) %>%
+    # Add precipitation data as a column chart
+    hc_add_series(
+      name = "Precipitation", 
+      data = list_parse2(current_data %>% select(Date, Precip)), 
+      type = "column", 
+      yAxis = 0
+    ) %>%
+    # Add CumF data as a spline chart
+    hc_add_series(
+      name = "Stream Discharge", 
+      data = list_parse2(current_data %>% select(Date, CumF)), 
+      type = "spline", 
+      yAxis = 1
+    ) %>%
+    # Set x-axis categories and title
+    hc_xAxis(
+      categories = as.character(current_data$Date), 
+      title = list(text = "Date"),
+      tickInterval = 1,
+      labels = list(rotation = -45) # Rotate labels if necessary
+    ) %>%
+    # Set title
+    hc_title(text = paste("Hydrograph and Precipitation for Station", name)) %>%
+    # Set chart options
+    hc_chart(type = "line") %>%
+    hc_tooltip(shared = TRUE) %>%
+    # Adjust x-axis tick interval for better readability
+    hc_xAxis(tickInterval = "1 month")
+
+  # Save the highcharter plot as an HTML file
+  saveWidget(hydrograph, paste0("Output_F/Pre_flow/hydrograph_station_", name, ".html"), selfcontained = TRUE)
+}
+
+```
+##all
+
+```{r}
+# Define the range of names you want to generate plots for
+name_range <- 1:22
+
+# Loop through each name and generate plots
+for (name in name_range) {
+  # Filter data for the current Name
+  current_data <- Data %>%
+    filter(Name == as.character(name)) %>%
+    filter(Date > as.Date("2023-07-01"))
+
+  # Calculate maximum values for each y-axis
+  max_precip <- max(current_data$Precip, na.rm = TRUE)
+  max_cumf <- max(current_data$CumF, na.rm = TRUE)
+  max_tn <- max(current_data$TN, na.rm = TRUE)
+  max_tp <- max(current_data$TP, na.rm = TRUE)
+
+  # Create hydrograph plot
+  hydrograph <- highchart() %>%
+    # Define multiple y-axes
+    hc_yAxis_multiples(
+      list(title = list(text = "Precipitation (mm)"), reversed = TRUE, opposite = TRUE, max = max_precip), 
+      list(title = list(text = "CumF (m³/day)"), max = max_cumf),
+      list(title = list(text = "TN"), opposite = TRUE, max = max_tn),
+      list(title = list(text = "TP"), opposite = TRUE, max = max_tp)
+    ) %>%
+    # Add TN data as a column chart
+    hc_add_series(
+      name = "TN",
+      data = list_parse2(current_data %>% select(Date, TN)),
+      type = "column",
+      yAxis = 2,
+      color = "green",
+      alpha = 0.3  # Adjust transparency to 30%
+    ) %>%
+    # Add TP data as a column chart
+    hc_add_series(
+      name = "TP",
+      data = list_parse2(current_data %>% select(Date, TP)),
+      type = "column",
+      yAxis = 3,
+      color = "purple",
+      alpha = 0.3  # Adjust transparency to 30%
+    ) %>%
+    # Add precipitation data as a column chart
+    hc_add_series(
+      name = "Precipitation", 
+      data = list_parse2(current_data %>% select(Date, Precip)), 
+      type = "column", 
+      yAxis = 0
+    ) %>%
+    # Add CumF data as a spline chart
+    hc_add_series(
+      name = "Stream Discharge", 
+      data = list_parse2(current_data %>% select(Date, CumF)), 
+      type = "spline", 
+      yAxis = 1
+    ) %>%
+    # Set x-axis categories and title
+    hc_xAxis(
+      categories = as.character(current_data$Date), 
+      title = list(text = "Date"),
+      tickInterval = 1,
+      labels = list(rotation = -45) # Rotate labels if necessary
+    ) %>%
+    # Set title
+    hc_title(text = paste("Hydrograph and Precipitation for Station", name)) %>%
+    # Set chart options
+    hc_chart(type = "line") %>%
+    hc_tooltip(shared = TRUE) %>%
+    # Adjust x-axis tick interval for better readability
+    hc_xAxis(tickInterval = "1 month")
+  # Save the highcharter plot as an HTML file
+  saveWidget(hydrograph, paste0("Output_F/Pre_NP_flow/hydrograph_station_", name, ".html"), selfcontained = TRUE)
+}
+```
+
+#TN
+
+```{r}
+
+
+# Define the range of names you want to generate plots for
+name_range <- 1:22
+
+# Loop through each name and generate plots
+for (name in name_range) {
+  # Filter data for the current Name
+  current_data <- Data %>%
+    filter(Name == as.character(name)) %>%
+    filter(Date > as.Date("2023-07-01"))
+
+  # Calculate maximum values and scaling factor
+  max_precip <- max(current_data$Precip, na.rm = TRUE)
+  max_cumf <- max(current_data$CumF, na.rm = TRUE)
+  max_tn <- max(current_data$TN, na.rm = TRUE)
+
+  
+  # Create scaling factors
+  scaling_factor_cumf <- max_cumf / max_precip
+  scaling_factor_tn <- max_tn / max_precip
+ 
+
+  # Create hydrograph plot
+  hydrograph <- highchart() %>%
+    # Define multiple y-axes
+    hc_yAxis_multiples(
+      list(title = list(text = "Precipitation (mm)"), reversed = TRUE, opposite = TRUE, max = max_precip), 
+      list(title = list(text = "CumF (m³/s)"), max = max_cumf),
+      list(title = list(text = "TN"), opposite = TRUE, max = max_tn)
+    ) %>%
+    # Add TN data as a column chart, at the bottom layer
+    hc_add_series(
+      name = "TN",
+      data = list_parse2(current_data %>% select(Date, TN)),
+      type = "column",
+      yAxis = 2,
+      color = "green",
+      alpha = 0.1  # More transparent, 10% opaque
+    ) %>%
+   
+    # Add precipitation data as a column chart, above TN and TP
+    hc_add_series(
+      name = "Precipitation", 
+      data = list_parse2(current_data %>% select(Date, Precip)), 
+      type = "column", 
+      yAxis = 0
+    ) %>%
+    # Add CumF data as a spline chart, above precipitation
+    hc_add_series(
+      name = "Stream Discharge", 
+      data = list_parse2(current_data %>% select(Date, CumF)), 
+      type = "spline", 
+      yAxis = 1
+    ) %>%
+    # Set x-axis categories and title
+    hc_xAxis(
+      categories = as.character(current_data$Date), 
+      title = list(text = "Date"),
+      tickInterval = 1,
+      labels = list(rotation = -45) # Rotate labels if necessary
+    ) %>%
+    # Set title
+    hc_title(text = paste("Hydrograph and Precipitation for Station", name)) %>%
+    # Set chart options
+    hc_chart(type = "line") %>%
+    hc_tooltip(shared = TRUE) %>%
+    # Adjust x-axis tick interval for better readability
+    hc_xAxis(tickInterval = "1 month")
+
+  # Save the highcharter plot as an HTML file
+  saveWidget(hydrograph, paste0("Output_F/Pre_NP_flow/TN/hydrograph_station_", name, ".html"), selfcontained = TRUE)
+}
+
+
+
+
+
+
+
+```
+#TP
+
+```{r}
+
+
+# Define the range of names you want to generate plots for
+name_range <- 1:22
+
+# Loop through each name and generate plots
+for (name in name_range) {
+  # Filter data for the current Name
+  current_data <- Data %>%
+    filter(Name == as.character(name)) %>%
+    filter(Date > as.Date("2023-07-01"))
+
+  # Calculate maximum values and scaling factor
+  max_precip <- max(current_data$Precip, na.rm = TRUE)
+  max_cumf <- max(current_data$CumF, na.rm = TRUE)
+  max_tp <- max(current_data$TP, na.rm = TRUE)
+  
+  # Create scaling factors
+  scaling_factor_cumf <- max_cumf / max_precip
+  scaling_factor_tp <- max_tp / max_precip
+
+  # Create hydrograph plot
+  hydrograph <- highchart() %>%
+    # Define multiple y-axes
+    hc_yAxis_multiples(
+      list(title = list(text = "Precipitation (mm)"), reversed = TRUE, opposite = TRUE, max = max_precip), 
+      list(title = list(text = "CumF (m³/s)"), max = max_cumf),
+      list(title = list(text = "TP"), opposite = TRUE, max = max_tp)
+    ) %>%
+    # Add TP data as a column chart, at the bottom layer
+    hc_add_series(
+      name = "TP",
+      data = list_parse2(current_data %>% select(Date, TP)),
+      type = "column",
+      yAxis = 2,
+      color = "purple",
+      alpha = 0.1  # More transparent, 10% opaque
+    ) %>%
+    # Add precipitation data as a column chart, above TN and TP
+    hc_add_series(
+      name = "Precipitation", 
+      data = list_parse2(current_data %>% select(Date, Precip)), 
+      type = "column", 
+      yAxis = 0
+    ) %>%
+    # Add CumF data as a spline chart, above precipitation
+    hc_add_series(
+      name = "Stream Discharge", 
+      data = list_parse2(current_data %>% select(Date, CumF)), 
+      type = "spline", 
+      yAxis = 1
+    ) %>%
+    # Set x-axis categories and title
+    hc_xAxis(
+      categories = as.character(current_data$Date), 
+      title = list(text = "Date"),
+      tickInterval = 1,
+      labels = list(rotation = -45) # Rotate labels if necessary
+    ) %>%
+    # Set title
+    hc_title(text = paste("Hydrograph and Precipitation for Station", name)) %>%
+    # Set chart options
+    hc_chart(type = "line") %>%
+    hc_tooltip(shared = TRUE) %>%
+    # Adjust x-axis tick interval for better readability
+    hc_xAxis(tickInterval = "1 month")
+
+  # Save the highcharter plot as an HTML file
+  saveWidget(hydrograph, paste0("Output_F/Pre_NP_flow/TP/hydrograph_station_", name, ".html"), selfcontained = TRUE)
+}
+
+
+
+
+
+
+
+```
