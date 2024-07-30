@@ -18,16 +18,20 @@ library(ggplot2)
 library(purrr)
 library(stringr)
 library(gridExtra)
+#install.packages("tidyverse")
+#install.packages("highcharter")
+library(highcharter)
+library(tidyverse)
+#install.packages("htmlwidgets")
+library(htmlwidgets)
 ```
 
 #import Data
 ```{r}
 
-Precipitation <- read_excel("Data/Precipitation.xlsx")
-precipitation_numeric <- str_remove(Precipitation, "mm") %>%
-                         as.numeric()
-
-colnames(Precipitation) <- c("Date","Precip")
+Precipitation <- read_excel("Data/Precipitation.xlsx", 
+    col_types = c("date", "numeric"))
+ colnames(Precipitation) <- c("Date","Precip")
 
 Data <- read.csv("Data/Daily_AllSite_Monitoring.csv")
 Data$Day <- ymd(Data$Day)
@@ -37,6 +41,9 @@ colnames(Data)[which(names(Data) == "CumF_daily")] <- "CumF"
 
 Data <- Data %>%
   left_join(Precipitation, by = c("Date" = "Date"))
+
+Data <- Data %>%
+  mutate(Precip = if_else(is.na(Precip), 0, Precip))
 
 write.csv(Data, file = "Data/Daily_AllSite_Monitoring_With_Precip.csv", row.names = FALSE)
 
@@ -138,41 +145,83 @@ ggplot() +
 
 
 
-
-
-
-
 ```
 ##figure test
 ```{r}
 
 
 S22 <- Data %>%
-  filter(Name == "22") %>% filter(Date)
+  filter(Name == "22") %>%  filter(Date > as.Date("2023-07-01"))
+
+max_precip <- max(S22$Precip, na.rm = TRUE)
+max_cumf <- max(S22$CumF, na.rm = TRUE)
+scaling_factor <- max_cumf / max_precip
+
 
 
 p1 <- ggplot() +
-  geom_col(data = Data, aes(x = Date, y = Precip), fill = "blue", alpha = 0.5) +
-  geom_line(data = CumF_22, aes(x = Date, y = CumF), color = "red", size = 1) +
-  scale_y_continuous(name = "Precipitation", 
-                     sec.axis = sec_axis(~ ., name = "CumF")) +
+  geom_col(data = S22, aes(x = Date, y = Precip), fill = "blue", alpha = 0.5) +
+ geom_line(data = S22, aes(x = Date, y = CumF / scaling_factor), color = "red", size = 0.5) +
+  scale_y_continuous(name = "Precipitation", sec.axis = sec_axis(~ ., name = "CumF")) +
   labs(title = "Precipitation and CumF for Station 22",
        x = "Date") +
   theme_minimal() +
-  theme(axis.title.y.right = element_text(color = "red"))
+  theme(axis.title.y.right = element_text(color = "red"),
+        axis.text.y.right = element_text(color = "red"))+
+  coord_cartesian(clip = 'off') +
+  theme(plot.margin = margin(1, 1, 1, 1, "cm"))
+
+
+
 print(p1)
 
 
-p2 <- ggplot() +
-  geom_col(data = Data, aes(x = Date, y = Precip), fill = "blue", alpha = 0.5) +
-  geom_line(data = CumF_22, aes(x = Date, y = CumF), color = "red", size = 1) +
-  scale_y_continuous(name = "Precipitation", limits = c(0,150),
-                     sec.axis = sec_axis(~ .*(120000/150), name = "CumF")) +
-  labs(title = "Precipitation and CumF for Station 22",
-       x = "Date") +
-  theme_minimal() +
-  theme(axis.title.y.right = element_text(color = "red"))
-print(p2)
+```
 
+```{r}
+max_precip <- max(S22$Precip, na.rm = TRUE)
+max_cumf <- max(S22$CumF, na.rm = TRUE)
+
+# Create scaling factor for aligning the two y-axes
+scaling_factor <- max_cumf / max_precip
+
+# Plot hydrograph and precipitation
+hydrograph <- highchart() %>%
+  # Define multiple y-axes
+  hc_yAxis_multiples(
+    list(title = list(text = "Precipitation (mm)"), reversed = TRUE, opposite = TRUE, max = max_precip), 
+    list(title = list(text = "CumF (m³/s)"), max = max_cumf)
+  ) %>%
+  # Add precipitation data as a column chart
+  hc_add_series(
+    name = "Precipitation", 
+    data = list_parse2(S22 %>% select(Date, Precip)), 
+    type = "column", 
+    yAxis = 0
+  ) %>%
+  # Add CumF data as a spline chart
+  hc_add_series(
+    name = "Stream Discharge", 
+    data = list_parse2(S22 %>% select(Date, CumF)), 
+    type = "spline", 
+    yAxis = 1
+  ) %>%
+  # Set x-axis categories and title
+  hc_xAxis(
+    categories = as.character(S22$Date), 
+    title = list(text = "Date"),
+    tickInterval = 1,
+    labels = list(rotation = -45) # Rotate labels if necessary
+  ) %>%
+  # Set title
+  hc_title(text = "Hydrograph and Precipitation") %>%
+  # Set chart options
+  hc_chart(type = "line") %>%
+  hc_tooltip(shared = TRUE) %>%
+  # Adjust x-axis tick interval for better readability
+  hc_xAxis(tickInterval = "1 month")
+htmltools::tagList(hydrograph)
+
+saveWidget(hydrograph, "hydrograph.html", selfcontained = TRUE)
 ```
 
